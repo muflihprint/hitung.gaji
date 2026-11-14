@@ -309,13 +309,21 @@
                         </div>
                     </div>
                 </div>
-                <div>
+               <div>
                     <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 ml-1">Dari Tanggal</label>
-                    <input type="date" id="eval-date-start" onchange="loadEvaluationLogs()" class="w-full px-3 py-2 bg-slate-50 text-slate-800 border border-slate-200 rounded-xl outline-none text-xs font-bold focus:ring-2 focus:ring-blue-500">
+                    <div class="relative flex items-center justify-between w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 transition">
+                        <span id="eval-date-start-display" class="text-xs font-bold text-slate-800 pointer-events-none">-</span>
+                        <i class="fa-regular fa-calendar text-slate-400 text-xs pointer-events-none"></i>
+                        <input type="date" id="eval-date-start" onchange="handleEvalDateChange()" onclick="try { this.showPicker?.(); } catch(e) {}" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                    </div>
                 </div>
                 <div>
                     <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 ml-1">Sampai Tanggal</label>
-                    <input type="date" id="eval-date-end" onchange="loadEvaluationLogs()" class="w-full px-3 py-2 bg-slate-50 text-slate-800 border border-slate-200 rounded-xl outline-none text-xs font-bold focus:ring-2 focus:ring-blue-500">
+                    <div class="relative flex items-center justify-between w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 transition">
+                        <span id="eval-date-end-display" class="text-xs font-bold text-slate-800 pointer-events-none">-</span>
+                        <i class="fa-regular fa-calendar text-slate-400 text-xs pointer-events-none"></i>
+                        <input type="date" id="eval-date-end" onchange="handleEvalDateChange()" onclick="try { this.showPicker?.(); } catch(e) {}" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                    </div>
                 </div>
             </div>
 
@@ -323,9 +331,15 @@
             <div class="flex items-center justify-between gap-2 pt-1">
                 <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
                     <span class="text-[10px] font-bold text-slate-400 uppercase mr-1">Pintasan:</span>
-                    <button type="button" onclick="setEvalDatePreset('today')" class="px-2.5 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 rounded-lg text-[11px] font-bold transition">Hari Ini</button>
-                    <button type="button" onclick="setEvalDatePreset('week')" class="px-2.5 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 rounded-lg text-[11px] font-bold transition">7 Hari Terakhir</button>
-                    <button type="button" onclick="setEvalDatePreset('month')" class="px-2.5 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 rounded-lg text-[11px] font-bold transition">Bulan Ini</button>
+                    <button type="button" id="eval-preset-today" onclick="setEvalDatePreset('today')" class="eval-preset-btn px-2.5 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 rounded-lg text-[11px] font-bold transition flex items-center gap-1 whitespace-nowrap">
+                        Hari Ini
+                    </button>
+                    <button type="button" id="eval-preset-week" onclick="setEvalDatePreset('week')" class="eval-preset-btn px-2.5 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 rounded-lg text-[11px] font-bold transition flex items-center gap-1 whitespace-nowrap">
+                        7 Hari Terakhir
+                    </button>
+                    <button type="button" id="eval-preset-month" onclick="setEvalDatePreset('month')" class="eval-preset-btn px-2.5 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 rounded-lg text-[11px] font-bold transition flex items-center gap-1 whitespace-nowrap">
+                        Bulan Ini
+                    </button>
                 </div>
                 <button type="button" onclick="loadEvaluationLogs()" class="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Refresh Data">
                     <i class="fa-solid fa-rotate-right text-xs"></i>
@@ -1778,6 +1792,66 @@ async function loadEmployeesPenilaian() {
     select.innerHTML = html;
 }
 
+function updateEvalDateDisplay() {
+    const startVal = document.getElementById('eval-date-start')?.value || '';
+    const endVal = document.getElementById('eval-date-end')?.value || '';
+
+    const startDisplay = document.getElementById('eval-date-start-display');
+    const endDisplay = document.getElementById('eval-date-end-display');
+
+    if (startDisplay) startDisplay.textContent = startVal ? formatEvalDate(startVal) : 'Pilih tanggal';
+    if (endDisplay) endDisplay.textContent = endVal ? formatEvalDate(endVal) : 'Pilih tanggal';
+}
+
+function syncActiveEvalPreset() {
+    const startVal = document.getElementById('eval-date-start')?.value || '';
+    const endVal = document.getElementById('eval-date-end')?.value || '';
+
+    const today = new Date();
+    const formatYMD = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    const todayStr = formatYMD(today);
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - 6);
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    let activePreset = null;
+    if (startVal === todayStr && endVal === todayStr) {
+        activePreset = 'today';
+    } else if (startVal === formatYMD(weekStart) && endVal === todayStr) {
+        activePreset = 'week';
+    } else if (startVal === formatYMD(monthStart) && endVal === todayStr) {
+        activePreset = 'month';
+    }
+
+    const presetLabels = {
+        today: 'Hari Ini',
+        week: '7 Hari Terakhir',
+        month: 'Bulan Ini'
+    };
+
+    const activeCls = 'eval-preset-btn px-2.5 py-1 bg-blue-600 text-white rounded-lg text-[11px] font-bold shadow-2xs transition flex items-center gap-1 whitespace-nowrap';
+    const inactiveCls = 'eval-preset-btn px-2.5 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 rounded-lg text-[11px] font-bold transition flex items-center gap-1 whitespace-nowrap';
+
+    ['today', 'week', 'month'].forEach(key => {
+        const btn = document.getElementById(`eval-preset-${key}`);
+        if (!btn) return;
+        if (key === activePreset) {
+            btn.className = activeCls;
+            btn.innerHTML = `<i class="fa-solid fa-check text-[9px]"></i> ${presetLabels[key]}`;
+        } else {
+            btn.className = inactiveCls;
+            btn.textContent = presetLabels[key];
+        }
+    });
+}
+
+function handleEvalDateChange() {
+    updateEvalDateDisplay();
+    syncActiveEvalPreset();
+    loadEvaluationLogs();
+}
+
 function setEvalDatePreset(preset, shouldLoad = true) {
     const today = new Date();
     const formatYMD = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -1793,6 +1867,9 @@ function setEvalDatePreset(preset, shouldLoad = true) {
 
     document.getElementById('eval-date-start').value = formatYMD(startDate);
     document.getElementById('eval-date-end').value = endStr;
+
+    updateEvalDateDisplay();
+    syncActiveEvalPreset();
 
     if (shouldLoad) loadEvaluationLogs();
 }
