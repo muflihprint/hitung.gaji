@@ -137,10 +137,11 @@
                 </div>
             </div>
             <!-- Tabs Navigasi -->
-            <div class="flex max-w-7xl mx-auto bg-blue-700 mt-1">
-                <button onclick="switchTab('gaji')" id="tab-gaji" class="flex-1 px-4 py-3 text-white font-bold border-b-4 border-white whitespace-nowrap text-sm transition-all text-center">Hitung Gaji</button>
-                <button onclick="switchTab('tugas')" id="tab-tugas" class="flex-1 px-4 py-3 text-blue-200 font-medium border-b-4 border-transparent hover:text-white whitespace-nowrap text-sm transition-all text-center">Manajemen Tugas</button>
-            </div>
+<div class="flex max-w-7xl mx-auto bg-blue-700 mt-1 overflow-x-auto no-scrollbar">
+    <button onclick="switchTab('gaji')" id="tab-gaji" class="flex-1 px-4 py-3 text-white font-bold border-b-4 border-white whitespace-nowrap text-sm transition-all text-center">Hitung Gaji</button>
+    <button onclick="switchTab('tugas')" id="tab-tugas" class="flex-1 px-4 py-3 text-blue-200 font-medium border-b-4 border-transparent hover:text-white whitespace-nowrap text-sm transition-all text-center">Manajemen Tugas</button>
+    <button onclick="switchTab('penilaian')" id="tab-penilaian" class="flex-1 px-4 py-3 text-blue-200 font-medium border-b-4 border-transparent hover:text-white whitespace-nowrap text-sm transition-all text-center">Penilaian Kinerja</button>
+</div>
         </nav>
 
         <!-- AREA KONTEN SCROLLABLE -->
@@ -287,6 +288,127 @@
                     </button>
                 </div>
             </div>
+
+            <!-- =============================== -->
+<!-- HALAMAN 3: PENILAIAN KINERJA    -->
+<!-- =============================== -->
+<div id="penilaian-view" class="hidden min-h-full flex flex-col">
+    <div class="max-w-4xl mx-auto w-full flex flex-col h-full relative pb-20">
+        
+        <!-- Filter Karyawan & Rentang Tanggal -->
+        <div class="px-4 py-4 bg-white border-b border-slate-200 shadow-sm sticky top-0 z-30 space-y-3">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 ml-1">Karyawan (PIC)</label>
+                    <div class="relative">
+                        <select id="eval-employee-select" onchange="loadEvaluationLogs()" class="w-full pl-3 pr-9 py-2.5 bg-slate-50 text-slate-800 border border-slate-200 rounded-xl outline-none appearance-none cursor-pointer text-xs font-bold shadow-2xs focus:ring-2 focus:ring-blue-500">
+                            <option value="all">Semua Karyawan</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                            <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 ml-1">Dari Tanggal</label>
+                    <input type="date" id="eval-date-start" onchange="loadEvaluationLogs()" class="w-full px-3 py-2 bg-slate-50 text-slate-800 border border-slate-200 rounded-xl outline-none text-xs font-bold focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 ml-1">Sampai Tanggal</label>
+                    <input type="date" id="eval-date-end" onchange="loadEvaluationLogs()" class="w-full px-3 py-2 bg-slate-50 text-slate-800 border border-slate-200 rounded-xl outline-none text-xs font-bold focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+
+            <!-- Pintasan Rentang Waktu Cepat -->
+            <div class="flex items-center justify-between gap-2 pt-1">
+                <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase mr-1">Pintasan:</span>
+                    <button type="button" onclick="setEvalDatePreset('today')" class="px-2.5 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 rounded-lg text-[11px] font-bold transition">Hari Ini</button>
+                    <button type="button" onclick="setEvalDatePreset('week')" class="px-2.5 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 rounded-lg text-[11px] font-bold transition">7 Hari Terakhir</button>
+                    <button type="button" onclick="setEvalDatePreset('month')" class="px-2.5 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 rounded-lg text-[11px] font-bold transition">Bulan Ini</button>
+                </div>
+                <button type="button" onclick="loadEvaluationLogs()" class="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Refresh Data">
+                    <i class="fa-solid fa-rotate-right text-xs"></i>
+                </button>
+            </div>
+        </div>
+
+        <main class="flex-1 px-4 py-5 safe-pb space-y-5">
+            
+            <!-- Ringkasan Statistik Kinerja (KPI Monitoring) -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase">Penyelesaian</span>
+                        <span id="eval-stat-rate" class="text-xs font-extrabold text-blue-600">0%</span>
+                    </div>
+                    <div class="text-lg font-extrabold text-slate-800" id="eval-stat-completed">0 / 0</div>
+                    <div class="w-full bg-slate-100 h-1.5 rounded-full mt-2 overflow-hidden">
+                        <div id="eval-stat-bar" class="bg-blue-600 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+                    <span class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Belum Selesai</span>
+                    <div class="text-lg font-extrabold text-rose-600" id="eval-stat-pending">0</div>
+                    <p class="text-[10px] text-slate-500 mt-1" id="eval-stat-overdue">0 tunggakan lewat tgl</p>
+                </div>
+
+                <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+                    <span class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Perlu Dinilai</span>
+                    <div class="text-lg font-extrabold text-amber-600" id="eval-stat-unrated">0</div>
+                    <p class="text-[10px] text-slate-500 mt-1">Selesai tanpa nilai</p>
+                </div>
+
+                <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+                    <span class="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Distribusi Nilai</span>
+                    <div class="flex flex-wrap gap-1 text-[10px] font-bold">
+                        <span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700" title="Sangat Baik">SB: <b id="eval-count-sb">0</b></span>
+                        <span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700" title="Baik">B: <b id="eval-count-b">0</b></span>
+                        <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800" title="Perlu Diperbaiki">PD: <b id="eval-count-pd">0</b></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter Status Tugas -->
+            <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                <button type="button" onclick="setEvalStatusFilter('all')" id="eval-filter-all" class="eval-filter-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white shadow-2xs whitespace-nowrap transition">
+                    Semua (<span id="badge-eval-all">0</span>)
+                </button>
+                <button type="button" onclick="setEvalStatusFilter('unrated')" id="eval-filter-unrated" class="eval-filter-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 whitespace-nowrap transition">
+                    Perlu Dinilai (<span id="badge-eval-unrated">0</span>)
+                </button>
+                <button type="button" onclick="setEvalStatusFilter('pending')" id="eval-filter-pending" class="eval-filter-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 whitespace-nowrap transition">
+                    Belum Selesai (<span id="badge-eval-pending">0</span>)
+                </button>
+                <button type="button" onclick="setEvalStatusFilter('rated')" id="eval-filter-rated" class="eval-filter-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 whitespace-nowrap transition">
+                    Sudah Dinilai (<span id="badge-eval-rated">0</span>)
+                </button>
+            </div>
+
+            <!-- State Loading -->
+            <div id="loading-eval" class="hidden flex flex-col items-center justify-center py-12 text-slate-500">
+                <div class="loader mb-3 text-blue-500"></div>
+                <p class="text-xs font-medium">Memuat log tugas harian...</p>
+            </div>
+
+            <!-- State Kosong -->
+            <div id="empty-eval" class="hidden flex flex-col items-center justify-center py-12 text-center bg-white rounded-2xl border border-slate-200 border-dashed">
+                <div class="w-16 h-16 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mb-3 text-3xl">
+                    <i class="fa-solid fa-clipboard-check"></i>
+                </div>
+                <h4 class="font-bold text-slate-700 text-sm mb-1">Tidak Ada Data Log Tugas</h4>
+                <p class="text-[11px] text-slate-500 max-w-[240px] leading-relaxed">Tidak ditemukan catatan tugas pada filter karyawan, status, atau rentang tanggal yang dipilih.</p>
+            </div>
+
+            <!-- Daftar Log Tugas -->
+            <div id="eval-logs-container" class="space-y-3">
+                <!-- Dirender melalui JS -->
+            </div>
+
+        </main>
+    </div>
+</div>
 
         </div> <!-- End Scrollable Area -->
     </div> <!-- End App View -->
@@ -599,29 +721,37 @@
             checkSession();
         });
 
-        // ==========================================
-        // UI & HELPERS
-        // ==========================================
-        function switchTab(tab) {
-            const gajiView = document.getElementById('gaji-view');
-            const tugasView = document.getElementById('tugas-view');
-            const tabGaji = document.getElementById('tab-gaji');
-            const tabTugas = document.getElementById('tab-tugas');
+    function switchTab(tab) {
+    const views = {
+        gaji: document.getElementById('gaji-view'),
+        tugas: document.getElementById('tugas-view'),
+        penilaian: document.getElementById('penilaian-view')
+    };
+    const tabs = {
+        gaji: document.getElementById('tab-gaji'),
+        tugas: document.getElementById('tab-tugas'),
+        penilaian: document.getElementById('tab-penilaian')
+    };
 
-            if(tab === 'gaji') {
-                gajiView.classList.remove('hidden');
-                tugasView.classList.add('hidden');
-                tabGaji.className = 'flex-1 px-4 py-3 text-white font-bold border-b-4 border-white whitespace-nowrap text-sm transition-all text-center';
-                tabTugas.className = 'flex-1 px-4 py-3 text-blue-200 font-medium border-b-4 border-transparent hover:text-white whitespace-nowrap text-sm transition-all text-center';
-            } else {
-                gajiView.classList.add('hidden');
-                tugasView.classList.remove('hidden');
-                tabTugas.className = 'flex-1 px-4 py-3 text-white font-bold border-b-4 border-white whitespace-nowrap text-sm transition-all text-center';
-                tabGaji.className = 'flex-1 px-4 py-3 text-blue-200 font-medium border-b-4 border-transparent hover:text-white whitespace-nowrap text-sm transition-all text-center';
-                // Trigger refresh if needed
-                if(lucide) lucide.createIcons();
-            }
+    const activeCls = 'flex-1 px-4 py-3 text-white font-bold border-b-4 border-white whitespace-nowrap text-sm transition-all text-center';
+    const inactiveCls = 'flex-1 px-4 py-3 text-blue-200 font-medium border-b-4 border-transparent hover:text-white whitespace-nowrap text-sm transition-all text-center';
+
+    Object.keys(views).forEach(key => {
+        if (!views[key] || !tabs[key]) return;
+        if (key === tab) {
+            views[key].classList.remove('hidden');
+            tabs[key].className = activeCls;
+        } else {
+            views[key].classList.add('hidden');
+            tabs[key].className = inactiveCls;
         }
+    });
+
+    if (tab === 'penilaian') {
+        loadEvaluationLogs();
+    }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
 
         // UNIFIED TOAST
         function showToast(param1, param2, param3) {
@@ -699,8 +829,9 @@
                     showToast('Sesi dipulihkan', `Selamat datang kembali, ${currentUser.name}!`, 'success');
                     
                     switchTab('gaji');
-                    await initAppHRIS();
-                    await initAppTugas();
+await initAppHRIS();
+await initAppTugas();
+await initAppPenilaian();
                 } catch (err) {
                     localStorage.removeItem('hris_session');
                     document.getElementById('loginView').classList.remove('hidden');
@@ -750,8 +881,9 @@
                 showToast("Berhasil", `Selamat datang, ${data.name}!`, "success");
                 
                 switchTab('gaji');
-                await initAppHRIS();
-                await initAppTugas();
+await initAppHRIS();
+await initAppTugas();
+await initAppPenilaian();
             });
         }
 
@@ -1377,19 +1509,17 @@ function setupTaskRealtime(employeeId) {
         .subscribe();
 }
 
-// Ganti / sesuaikan fungsi loadTasks di index.html
-async function loadTasks(employeeId, isSilentRefresh = false) {
-    if (!isSilentRefresh) {
-        document.getElementById('loading-tasks').classList.remove('hidden');
-        document.getElementById('empty-tasks').classList.add('hidden');
-        document.getElementById('tasks-container').innerHTML = '';
-    }
-    
-    const todayStr = new Date().toLocaleDateString('en-CA');
+// ==========================================
+// MODULE: MANAJEMEN TUGAS (MASTER TUGAS)
+// ==========================================
+async function loadTasks(employeeId) {
+    document.getElementById('loading-tasks').classList.remove('hidden');
+    document.getElementById('empty-tasks').classList.add('hidden');
+    document.getElementById('tasks-container').innerHTML = '';
 
     try {
-        // 1. Tarik Data Tugas Master
-        const { data: tasksData, error: tasksError } = await supabaseClient.from('employee_tasks')
+        const { data: tasksData, error: tasksError } = await supabaseClient
+            .from('employee_tasks')
             .select('*')
             .eq('pic_id', employeeId)
             .order('is_active', { ascending: false })
@@ -1397,118 +1527,57 @@ async function loadTasks(employeeId, isSilentRefresh = false) {
 
         if (tasksError) throw tasksError;
 
-        // 2. Tarik Data Log Harian (Termasuk status selesai dan penilaian)
-        const { data: logsData, error: logsError } = await supabaseClient.from('daily_task_logs')
-            .select('id, task_id, is_completed, evaluation, task_date')
-            .eq('pic_id', employeeId)
-            .eq('task_date', todayStr);
-
-        if (logsError) throw logsError;
-
-        // Buat map log berdasarkan task_id hari ini
-        const logsMap = {};
-        (logsData || []).forEach(log => {
-            logsMap[log.task_id] = log;
-        });
-
-        currentTasks = (tasksData || []).map(task => ({
-            ...task,
-            log_id: logsMap[task.id] ? logsMap[task.id].id : null,
-            is_completed_today: logsMap[task.id] ? logsMap[task.id].is_completed : false,
-            evaluation: logsMap[task.id] ? logsMap[task.id].evaluation : null
-        }));
-
-        if (!isSilentRefresh) {
-            document.getElementById('loading-tasks').classList.add('hidden');
-            document.getElementById('task-count').innerText = `${currentTasks.length} TUGAS`;
-        }
+        currentTasks = tasksData || [];
+        document.getElementById('loading-tasks').classList.add('hidden');
+        document.getElementById('task-count').innerText = `${currentTasks.length} TUGAS`;
 
         if (currentTasks.length === 0) {
             document.getElementById('empty-tasks').classList.remove('hidden');
             document.getElementById('tasks-container').innerHTML = '';
         } else {
             renderTasksMobile(currentTasks);
-            if (!isSilentRefresh) setupTaskRealtime(employeeId);
         }
-        
     } catch (err) {
-        if (!isSilentRefresh) document.getElementById('loading-tasks').classList.add('hidden');
+        document.getElementById('loading-tasks').classList.add('hidden');
         showToast("Gagal memuat tugas", err.message, "error");
     }
 }
 
-// Perbarui fungsi renderTasksMobile di index.html
 function renderTasksMobile(tasks) {
     const container = document.getElementById('tasks-container');
     let html = '';
-    
+
     tasks.forEach((task) => {
-        let typeBg = task.task_type === 'sekali' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-blue-100 text-blue-700 border-blue-200';
-        let typeIcon = task.task_type === 'sekali' ? 'fa-bolt' : 'fa-rotate';
-        let typeText = task.task_type === 'sekali' ? 'Sekali' : 'Rutin';
+        const typeBg = task.task_type === 'sekali' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-blue-100 text-blue-700 border-blue-200';
+        const typeIcon = task.task_type === 'sekali' ? 'fa-bolt' : 'fa-rotate';
+        const typeText = task.task_type === 'sekali' ? 'Sekali' : 'Rutin';
         let scheduleText = '';
-        
+
         if (task.schedule_type === 'harian') scheduleText = 'Tiap Hari';
         else if (task.schedule_type === 'mingguan') {
             let days = typeof task.schedule_days === 'string' ? task.schedule_days.replace(/[{}]/g, '').split(',') : task.schedule_days;
-            if(days && days.length > 0) scheduleText = days.map(d => ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'][parseInt(d)]).join(', ');
+            if (days && days.length > 0) scheduleText = days.map(d => ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'][parseInt(d)]).join(', ');
             else scheduleText = 'Mingguan';
-        }
-        else if (task.schedule_type === 'bulanan' || task.task_type === 'sekali') scheduleText = `Tgl ${task.schedule_date || '-'}`;
-
-        let isCompleted = task.is_completed_today;
-        let cardClass = task.is_active ? 'bg-white shadow-sm border-slate-200' : 'bg-slate-50 border-slate-200 opacity-60';
-        let titleClass = task.is_active ? 'text-slate-800' : 'text-slate-500 line-through';
-        
-        if (isCompleted) {
-            cardClass = 'bg-emerald-50/40 shadow-sm border-emerald-200 border-l-4 border-l-emerald-500 transition-all';
-            titleClass = 'text-emerald-900 line-through opacity-70';
+        } else if (task.schedule_type === 'bulanan' || task.task_type === 'sekali') {
+            scheduleText = `Tgl ${task.schedule_date || '-'}`;
         }
 
-        let statusBadge = '';
-        if (isCompleted) {
-            statusBadge = `<div class="absolute top-0 right-0 bg-emerald-500 text-white text-[9px] font-bold px-2 py-1 rounded-bl-lg flex items-center gap-1 shadow-sm"><i class="fa-solid fa-check-double"></i> SELESAI HARI INI</div>`;
-        } else if (!task.is_active) {
-            statusBadge = `<div class="absolute top-0 right-0 bg-slate-200 text-slate-500 text-[9px] font-bold px-2 py-0.5 rounded-bl-lg">NONAKTIF</div>`;
-        }
-
-        // Bagian Input Penilaian Admin (Hanya muncul jika tugas sudah selesai dan memiliki log_id)
-        let evaluationSection = '';
-        if (isCompleted && task.log_id) {
-            const evalVal = task.evaluation || '';
-            evaluationSection = `
-                <div class="mt-3 pt-3 border-t border-emerald-100 bg-white/60 p-2.5 rounded-xl">
-                    <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Penilaian Tugas:</label>
-                    <div class="flex gap-2 items-center">
-                        <select onchange="updateTaskEvaluation(${task.log_id}, this.value)" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
-                            <option value="" ${evalVal === '' ? 'selected' : ''}>-- Belum Dinilai --</option>
-                            <option value="perlu diperbaiki" ${evalVal === 'perlu diperbaiki' ? 'selected' : ''}>Perlu Diperbaiki</option>
-                            <option value="baik" ${evalVal === 'baik' ? 'selected' : ''}>Baik</option>
-                            <option value="sangat baik" ${evalVal === 'sangat baik' ? 'selected' : ''}>Sangat Baik</option>
-                        </select>
-                    </div>
-                </div>
-            `;
-        } else {
-            evaluationSection = `
-                <div class="mt-2 text-[10px] text-slate-400 italic">
-                    * Penilaian aktif setelah karyawan menyelesaikan tugas ini.
-                </div>
-            `;
-        }
+        const cardClass = task.is_active ? 'bg-white shadow-sm border-slate-200' : 'bg-slate-50 border-slate-200 opacity-60';
+        const titleClass = task.is_active ? 'text-slate-800' : 'text-slate-500 line-through';
+        const statusBadge = !task.is_active
+            ? `<div class="absolute top-0 right-0 bg-slate-200 text-slate-500 text-[9px] font-bold px-2 py-0.5 rounded-bl-lg">NONAKTIF</div>`
+            : '';
 
         html += `
-            <div class="p-4 rounded-2xl border ${cardClass} relative overflow-hidden transition-all duration-500 mb-3">
+            <div class="p-4 rounded-2xl border ${cardClass} relative overflow-hidden transition-all mb-3">
                 ${statusBadge}
-                <div class="pr-20 mb-3"><h4 class="font-bold text-sm ${titleClass} leading-snug">${task.task_name}</h4></div>
-                <div class="flex flex-wrap gap-1.5 mb-2">
-                    <span class="text-[10px] font-bold px-2 py-1 rounded-md border ${isCompleted ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : typeBg} flex items-center gap-1"><i class="fa-solid ${typeIcon}"></i> ${typeText}</span>
-                    <span class="text-[10px] font-bold px-2 py-1 rounded-md border ${isCompleted ? 'bg-white text-emerald-600 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'} flex items-center gap-1"><i class="fa-solid fa-calendar-day"></i> ${scheduleText}</span>
+                <div class="pr-16 mb-3"><h4 class="font-bold text-sm ${titleClass} leading-snug">${task.task_name}</h4></div>
+                <div class="flex flex-wrap gap-1.5 mb-3">
+                    <span class="text-[10px] font-bold px-2 py-1 rounded-md border ${typeBg} flex items-center gap-1"><i class="fa-solid ${typeIcon}"></i> ${typeText}</span>
+                    <span class="text-[10px] font-bold px-2 py-1 rounded-md border bg-slate-100 text-slate-600 border-slate-200 flex items-center gap-1"><i class="fa-solid fa-calendar-day"></i> ${scheduleText}</span>
                 </div>
-                
-                ${evaluationSection}
 
-                <div class="grid grid-cols-2 gap-2 border-t border-slate-100 pt-3 mt-3">
+                <div class="grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
                     <button onclick="editTask(${task.id})" class="py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-1.5">
                         <i data-lucide="edit-2" class="w-3.5 h-3.5"></i> Edit
                     </button>
@@ -1519,23 +1588,9 @@ function renderTasksMobile(tasks) {
             </div>
         `;
     });
-    
+
     container.innerHTML = html;
     if (typeof lucide !== 'undefined') lucide.createIcons();
-}
-
-async function updateTaskEvaluation(logId, evaluationValue) {
-    try {
-        const { error } = await supabaseClient
-            .from('daily_task_logs')
-            .update({ evaluation: evaluationValue || null })
-            .eq('id', logId);
-
-        if (error) throw error;
-        showToast("Sukses", "Penilaian tugas berhasil disimpan.", "success");
-    } catch (err) {
-        showToast("Gagal", err.message, "error");
-    }
 }
 
         function openTaskModal() {
@@ -1686,6 +1741,348 @@ async function deleteTask(id) {
             const backdrop = document.getElementById('task-modal-backdrop'); const content = document.getElementById('task-modal-content');
             void content.offsetWidth; backdrop.classList.remove('opacity-0'); content.classList.remove('translate-y-full');
         }
+
+        // ==========================================
+// MODULE: PENILAIAN KINERJA (DAILY TASK LOGS)
+// ==========================================
+let evalEmployeeMap = {};
+let currentEvalLogs = [];
+let currentEvalStatusFilter = 'all';
+let evalRealtimeSubscription = null;
+
+async function initAppPenilaian() {
+    await loadEmployeesPenilaian();
+    setEvalDatePreset('today', false);
+    setupEvalRealtime();
+    await loadEvaluationLogs();
+}
+
+async function loadEmployeesPenilaian() {
+    const select = document.getElementById('eval-employee-select');
+    if (!select) return;
+
+    const { data, error } = await supabaseClient
+        .from('employees')
+        .select('id, code, name, position')
+        .neq('position', 'Tidak Aktif')
+        .order('name');
+
+    if (error) return;
+
+    evalEmployeeMap = {};
+    let html = '<option value="all">Semua Karyawan</option>';
+    (data || []).forEach(emp => {
+        evalEmployeeMap[emp.id] = emp;
+        html += `<option value="${emp.id}">${emp.name} (${emp.code})</option>`;
+    });
+    select.innerHTML = html;
+}
+
+function setEvalDatePreset(preset, shouldLoad = true) {
+    const today = new Date();
+    const formatYMD = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    const endStr = formatYMD(today);
+    let startDate = new Date(today);
+
+    if (preset === 'week') {
+        startDate.setDate(today.getDate() - 6);
+    } else if (preset === 'month') {
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+    }
+
+    document.getElementById('eval-date-start').value = formatYMD(startDate);
+    document.getElementById('eval-date-end').value = endStr;
+
+    if (shouldLoad) loadEvaluationLogs();
+}
+
+function setupEvalRealtime() {
+    if (evalRealtimeSubscription) {
+        supabaseClient.removeChannel(evalRealtimeSubscription);
+    }
+
+    evalRealtimeSubscription = supabaseClient
+        .channel('eval-logs-realtime')
+        .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'daily_task_logs' },
+            () => {
+                const isPenilaianActive = !document.getElementById('penilaian-view').classList.contains('hidden');
+                if (isPenilaianActive) {
+                    loadEvaluationLogs(true);
+                }
+            }
+        )
+        .subscribe();
+}
+
+async function loadEvaluationLogs(isSilentRefresh = false) {
+    const empId = document.getElementById('eval-employee-select')?.value || 'all';
+    const startDate = document.getElementById('eval-date-start')?.value;
+    const endDate = document.getElementById('eval-date-end')?.value;
+
+    if (!isSilentRefresh) {
+        document.getElementById('loading-eval').classList.remove('hidden');
+        document.getElementById('empty-eval').classList.add('hidden');
+        document.getElementById('eval-logs-container').innerHTML = '';
+    }
+
+    try {
+        let query = supabaseClient
+            .from('daily_task_logs')
+            .select('*')
+            .order('task_date', { ascending: false })
+            .order('is_completed', { ascending: false })
+            .order('id', { ascending: false });
+
+        if (empId !== 'all') {
+            query = query.eq('pic_id', empId);
+        }
+        if (startDate) {
+            query = query.gte('task_date', startDate);
+        }
+        if (endDate) {
+            query = query.lte('task_date', endDate);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        currentEvalLogs = data || [];
+        if (!isSilentRefresh) {
+            document.getElementById('loading-eval').classList.add('hidden');
+        }
+
+        updateEvalSummary(currentEvalLogs);
+        renderEvaluationLogs();
+    } catch (err) {
+        if (!isSilentRefresh) document.getElementById('loading-eval').classList.add('hidden');
+        showToast("Gagal memuat log penilaian", err.message, "error");
+    }
+}
+
+function updateEvalSummary(logs) {
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    const total = logs.length;
+    const completedLogs = logs.filter(l => l.is_completed);
+    const pendingLogs = logs.filter(l => !l.is_completed);
+    const overdueCount = pendingLogs.filter(l => l.task_date && l.task_date < todayStr).length;
+
+    const unratedLogs = completedLogs.filter(l => !l.evaluation || String(l.evaluation).trim() === '');
+    const ratedLogs = completedLogs.filter(l => l.evaluation && String(l.evaluation).trim() !== '');
+
+    const countSB = ratedLogs.filter(l => l.evaluation.toLowerCase() === 'sangat baik').length;
+    const countB = ratedLogs.filter(l => l.evaluation.toLowerCase() === 'baik').length;
+    const countPD = ratedLogs.filter(l => l.evaluation.toLowerCase() === 'perlu diperbaiki').length;
+
+    const rate = total > 0 ? Math.round((completedLogs.length / total) * 100) : 0;
+
+    document.getElementById('eval-stat-rate').innerText = `${rate}%`;
+    document.getElementById('eval-stat-completed').innerText = `${completedLogs.length} / ${total}`;
+    document.getElementById('eval-stat-bar').style.width = `${rate}%`;
+
+    document.getElementById('eval-stat-pending').innerText = pendingLogs.length;
+    document.getElementById('eval-stat-overdue').innerText = `${overdueCount} tunggakan lewat tgl`;
+    document.getElementById('eval-stat-unrated').innerText = unratedLogs.length;
+
+    document.getElementById('eval-count-sb').innerText = countSB;
+    document.getElementById('eval-count-b').innerText = countB;
+    document.getElementById('eval-count-pd').innerText = countPD;
+
+    // Update badge hitungan filter
+    document.getElementById('badge-eval-all').innerText = total;
+    document.getElementById('badge-eval-unrated').innerText = unratedLogs.length;
+    document.getElementById('badge-eval-pending').innerText = pendingLogs.length;
+    document.getElementById('badge-eval-rated').innerText = ratedLogs.length;
+}
+
+function setEvalStatusFilter(status) {
+    currentEvalStatusFilter = status;
+    document.querySelectorAll('.eval-filter-btn').forEach(btn => {
+        btn.className = 'eval-filter-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 whitespace-nowrap transition';
+    });
+
+    const activeBtn = document.getElementById(`eval-filter-${status}`);
+    if (activeBtn) {
+        activeBtn.className = 'eval-filter-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white shadow-2xs whitespace-nowrap transition';
+    }
+
+    renderEvaluationLogs();
+}
+
+function formatEvalDate(dateStr) {
+    if (!dateStr) return '-';
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    return dt.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function formatEvalTimestamp(ts) {
+    if (!ts) return '';
+    const normalized = String(ts).replace(' ', 'T');
+    const dt = new Date(normalized);
+    if (isNaN(dt.getTime())) return ts;
+    const tgl = dt.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+    const jam = dt.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':');
+    return `${tgl}, ${jam}`;
+}
+
+function renderEvaluationLogs() {
+    const container = document.getElementById('eval-logs-container');
+    const emptyEl = document.getElementById('empty-eval');
+    const todayStr = new Date().toLocaleDateString('en-CA');
+
+    const filteredLogs = currentEvalLogs.filter(log => {
+        const hasEval = log.evaluation && String(log.evaluation).trim() !== '';
+        if (currentEvalStatusFilter === 'unrated') return log.is_completed && !hasEval;
+        if (currentEvalStatusFilter === 'pending') return !log.is_completed;
+        if (currentEvalStatusFilter === 'rated') return log.is_completed && hasEval;
+        return true;
+    });
+
+    if (filteredLogs.length === 0) {
+        container.innerHTML = '';
+        emptyEl.classList.remove('hidden');
+        return;
+    }
+
+    emptyEl.classList.add('hidden');
+    let html = '';
+
+    filteredLogs.forEach(log => {
+        const emp = evalEmployeeMap[log.pic_id];
+        const empName = emp ? emp.name : `Karyawan #${log.pic_id}`;
+        const isCompleted = !!log.is_completed;
+        const isOverdue = !isCompleted && log.task_date && log.task_date < todayStr;
+        const currentEval = (log.evaluation || '').toLowerCase();
+
+        // Styling kartu berdasarkan status pengerjaan
+        let cardBorder = 'bg-white border-slate-200';
+        let statusRibbon = '';
+
+        if (isCompleted) {
+            cardBorder = currentEval
+                ? 'bg-white border-emerald-200 border-l-4 border-l-emerald-500'
+                : 'bg-amber-50/30 border-amber-200 border-l-4 border-l-amber-400';
+            statusRibbon = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200"><i class="fa-solid fa-check-double"></i> Selesai${log.completed_at ? ' • ' + formatEvalTimestamp(log.completed_at) : ''}</span>`;
+        } else if (isOverdue) {
+            cardBorder = 'bg-rose-50/30 border-rose-200 border-l-4 border-l-rose-500';
+            statusRibbon = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200"><i class="fa-solid fa-circle-exclamation"></i> Tunggakan</span>`;
+        } else {
+            statusRibbon = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200"><i class="fa-regular fa-clock"></i> Belum Selesai</span>`;
+        }
+
+        // Kontrol Penilaian (hanya aktif jika tugas sudah selesai)
+        let evaluationControl = '';
+        if (isCompleted) {
+            const btnOptions = [
+                {
+                    val: 'sangat baik',
+                    label: 'Sangat Baik',
+                    icon: 'fa-solid fa-award',
+                    activeCls: 'bg-emerald-600 text-white border-emerald-600 shadow-2xs',
+                    idleCls: 'bg-white text-slate-600 border-slate-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200'
+                },
+                {
+                    val: 'baik',
+                    label: 'Baik',
+                    icon: 'fa-solid fa-thumbs-up',
+                    activeCls: 'bg-blue-600 text-white border-blue-600 shadow-2xs',
+                    idleCls: 'bg-white text-slate-600 border-slate-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200'
+                },
+                {
+                    val: 'perlu diperbaiki',
+                    label: 'Perlu Diperbaiki',
+                    icon: 'fa-solid fa-triangle-exclamation',
+                    activeCls: 'bg-amber-500 text-white border-amber-500 shadow-2xs',
+                    idleCls: 'bg-white text-slate-600 border-slate-200 hover:bg-amber-50 hover:text-amber-800 hover:border-amber-200'
+                }
+            ];
+
+            const buttonsHTML = btnOptions.map(opt => {
+                const isSelected = currentEval === opt.val;
+                return `
+                    <button type="button" onclick="submitTaskEvaluation(${log.id}, '${opt.val}')" class="flex-1 py-2 px-2 rounded-xl border text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 ${isSelected ? opt.activeCls : opt.idleCls}">
+                        <i class="${opt.icon}"></i>
+                        <span>${opt.label}</span>
+                    </button>
+                `;
+            }).join('');
+
+            const resetBtn = currentEval
+                ? `<button type="button" onclick="submitTaskEvaluation(${log.id}, '')" class="px-2.5 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-slate-400 text-[11px] font-bold transition" title="Hapus Penilaian"><i class="fa-solid fa-xmark"></i></button>`
+                : '';
+
+            evaluationControl = `
+                <div class="mt-3 pt-3 border-t border-slate-100">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Penilaian Kinerja:</span>
+                        ${!currentEval ? '<span class="text-[10px] font-bold text-amber-600">Menunggu nilai</span>' : ''}
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        ${buttonsHTML}
+                        ${resetBtn}
+                    </div>
+                </div>
+            `;
+        } else {
+            evaluationControl = `
+                <div class="mt-2.5 pt-2 border-t border-slate-100/80 text-[11px] text-slate-400 italic flex items-center gap-1.5">
+                    <i class="fa-solid fa-lock text-[10px]"></i> Penilaian tersedia setelah tugas diselesaikan karyawan.
+                </div>
+            `;
+        }
+
+        html += `
+            <div class="p-4 rounded-2xl border ${cardBorder} shadow-2xs transition-all">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="inline-flex items-center gap-1 text-xs font-extrabold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-100">
+                            <i class="fa-solid fa-user text-[10px]"></i> ${empName}
+                        </span>
+                        <span class="text-[11px] font-semibold text-slate-500">
+                            <i class="fa-regular fa-calendar mr-1"></i>${formatEvalDate(log.task_date)}
+                        </span>
+                    </div>
+                    ${statusRibbon}
+                </div>
+
+                <h4 class="font-bold text-sm text-slate-800 leading-snug">${log.task_name}</h4>
+                ${evaluationControl}
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+async function submitTaskEvaluation(logId, evaluationValue) {
+    try {
+        const newValue = evaluationValue || null;
+        const { error } = await supabaseClient
+            .from('daily_task_logs')
+            .update({ evaluation: newValue })
+            .eq('id', logId);
+
+        if (error) throw error;
+
+        // Perbarui state lokal secara instan agar respons UI cepat
+        const target = currentEvalLogs.find(l => l.id === logId);
+        if (target) target.evaluation = newValue;
+
+        updateEvalSummary(currentEvalLogs);
+        renderEvaluationLogs();
+
+        showToast(
+            "Penilaian Disimpan",
+            newValue ? `Nilai diubah menjadi "${newValue.toUpperCase()}".` : "Penilaian dikosongkan.",
+            "success"
+        );
+    } catch (err) {
+        showToast("Gagal Menyimpan", err.message, "error");
+    }
+}
 
     </script>
 </body>
