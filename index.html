@@ -1550,36 +1550,82 @@ function renderTasksMobile(tasks) {
             }
         }
 
-        async function saveTask() {
-            if (!selectedEmployeeIdTugas) return showToast("Gagal", "Karyawan (PIC) belum dipilih.", "error"); 
-            const taskId = document.getElementById('task-id').value;
-            const taskName = document.getElementById('task-name').value.trim();
-            const taskType = document.getElementById('task-type').value;
-            const schedType = taskType === 'sekali' ? null : document.getElementById('schedule-type').value;
-            const isActive = document.getElementById('is-active').checked;
+async function saveTask() {
+    if (!selectedEmployeeIdTugas) return showToast("Gagal", "Karyawan (PIC) belum dipilih.", "error"); 
+    const taskId = document.getElementById('task-id').value;
+    const taskName = document.getElementById('task-name').value.trim();
+    const taskType = document.getElementById('task-type').value;
+    const schedType = taskType === 'sekali' ? null : document.getElementById('schedule-type').value;
+    const isActive = document.getElementById('is-active').checked;
 
-            if (!taskName) return showToast("Peringatan", "Nama tugas wajib diisi!", "error"); 
+    if (!taskName) return showToast("Peringatan", "Nama tugas wajib diisi!", "error"); 
 
-            let payload = { pic_id: selectedEmployeeIdTugas, task_name: taskName, task_type: taskType, schedule_type: schedType, is_active: isActive, schedule_days: null, schedule_date: null };
+    let payload = { 
+        pic_id: selectedEmployeeIdTugas, 
+        task_name: taskName, 
+        task_type: taskType, 
+        schedule_type: schedType, 
+        is_active: isActive, 
+        schedule_days: null, 
+        schedule_date: null 
+    };
 
-            if (taskType === 'rutin' && schedType === 'mingguan') {
-                let days = []; document.querySelectorAll('.day-checkbox:checked').forEach(cb => days.push(parseInt(cb.value)));
-                if (days.length === 0) return showToast("Peringatan", "Pilih minimal 1 hari!", "error"); 
-                payload.schedule_days = `{${days.join(',')}}`;
-            } 
-            else if (taskType === 'sekali' || (taskType === 'rutin' && schedType === 'bulanan')) {
-                const dateVal = parseInt(document.getElementById('schedule-date').value);
-                if (!dateVal || dateVal < 1 || dateVal > 31) return showToast("Peringatan", "Masukkan tanggal 1-31.", "error"); 
-                payload.schedule_date = dateVal;
-            }
+    if (taskType === 'rutin' && schedType === 'mingguan') {
+        let days = []; 
+        document.querySelectorAll('.day-checkbox:checked').forEach(cb => days.push(parseInt(cb.value)));
+        if (days.length === 0) return showToast("Peringatan", "Pilih minimal 1 hari!", "error"); 
+        payload.schedule_days = `{${days.join(',')}}`;
+    } 
+    else if (taskType === 'sekali' || (taskType === 'rutin' && schedType === 'bulanan')) {
+        const dateVal = parseInt(document.getElementById('schedule-date').value);
+        if (!dateVal || dateVal < 1 || dateVal > 31) return showToast("Peringatan", "Masukkan tanggal 1-31.", "error"); 
+        payload.schedule_date = dateVal;
+    }
 
-            await withLoading('btn-save-task', 'Menyimpan...', async () => {
-                let response = taskId ? await supabaseClient.from('employee_tasks').update(payload).eq('id', taskId) : await supabaseClient.from('employee_tasks').insert([payload]);
-                if (response.error) return showToast("Gagal", response.error.message, "error");
-                showToast("Sukses", `Tugas ${taskId ? 'diperbarui' : 'ditambahkan'}!`, "success");
-                closeTaskModal(); loadTasks(selectedEmployeeIdTugas);
-            });
+    await withLoading('btn-save-task', 'Menyimpan...', async () => {
+        // 1. JIKA EDIT: Hapus log yang BELUM selesai SEBELUM mengupdate employee_tasks
+        if (taskId) {
+            const { error: delLogErr } = await supabaseClient
+                .from('daily_task_logs')
+                .delete()
+                .eq('task_id', taskId)
+                .eq('is_completed', false);
+
+            if (delLogErr) return showToast("Gagal", "Gagal membersihkan log lama: " + delLogErr.message, "error");
         }
+
+        // 2. Simpan perubahan ke master employee_tasks (memicu realtime di aplikasi karyawan)
+        let response = taskId 
+            ? await supabaseClient.from('employee_tasks').update(payload).eq('id', taskId) 
+            : await supabaseClient.from('employee_tasks').insert([payload]);
+
+        if (response.error) return showToast("Gagal", response.error.message, "error");
+        
+        showToast("Sukses", `Tugas ${taskId ? 'diperbarui' : 'ditambahkan'}!`, "success");
+        closeTaskModal(); 
+        loadTasks(selectedEmployeeIdTugas);
+    });
+}
+
+async function deleteTask(id) {
+    if (!confirm("Hapus tugas ini secara permanen?")) return;
+
+    // 1. Hapus log tugas yang BELUM selesai SEBELUM menghapus master tugas
+    const { error: delLogErr } = await supabaseClient
+        .from('daily_task_logs')
+        .delete()
+        .eq('task_id', id)
+        .eq('is_completed', false);
+
+    if (delLogErr) return showToast("Gagal", delLogErr.message, "error");
+
+    // 2. Hapus tugas dari tabel master employee_tasks
+    const { error } = await supabaseClient.from('employee_tasks').delete().eq('id', id);
+    if (error) return showToast("Gagal", error.message, "error");
+    
+    showToast("Dihapus", "Tugas berhasil dihapus.", "success");
+    loadTasks(selectedEmployeeIdTugas);
+}
 
         function editTask(id) {
             const task = currentTasks.find(t => t.id === id); if (!task) return;
@@ -1604,13 +1650,6 @@ function renderTasksMobile(tasks) {
             void content.offsetWidth; backdrop.classList.remove('opacity-0'); content.classList.remove('translate-y-full');
         }
 
-        async function deleteTask(id) {
-            if (!confirm("Hapus tugas ini secara permanen?")) return;
-            const { error } = await supabaseClient.from('employee_tasks').delete().eq('id', id);
-            if (error) return showToast("Gagal", error.message, "error");
-            showToast("Dihapus", "Tugas berhasil dihapus.", "success");
-            loadTasks(selectedEmployeeIdTugas);
-        }
     </script>
 </body>
 </html>
