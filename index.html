@@ -1377,7 +1377,7 @@ function setupTaskRealtime(employeeId) {
         .subscribe();
 }
 
-// FUNGSI 2: Load Tugas beserta Status Harian
+// Ganti / sesuaikan fungsi loadTasks di index.html
 async function loadTasks(employeeId, isSilentRefresh = false) {
     if (!isSilentRefresh) {
         document.getElementById('loading-tasks').classList.remove('hidden');
@@ -1385,8 +1385,7 @@ async function loadTasks(employeeId, isSilentRefresh = false) {
         document.getElementById('tasks-container').innerHTML = '';
     }
     
-    // Ambil tanggal hari ini (Format YYYY-MM-DD waktu lokal)
-    const todayStr = new Date().toLocaleDateString('en-CA'); // en-CA menghasilkan YYYY-MM-DD
+    const todayStr = new Date().toLocaleDateString('en-CA');
 
     try {
         // 1. Tarik Data Tugas Master
@@ -1398,22 +1397,25 @@ async function loadTasks(employeeId, isSilentRefresh = false) {
 
         if (tasksError) throw tasksError;
 
-        // 2. Tarik Data Log Harian (Untuk mengecek mana yang sudah selesai hari ini)
+        // 2. Tarik Data Log Harian (Termasuk status selesai dan penilaian)
         const { data: logsData, error: logsError } = await supabaseClient.from('daily_task_logs')
-            .select('task_id, is_completed')
+            .select('id, task_id, is_completed, evaluation, task_date')
             .eq('pic_id', employeeId)
-            .eq('task_date', todayStr)
-            .eq('is_completed', true);
+            .eq('task_date', todayStr);
 
         if (logsError) throw logsError;
 
-        // 3. Buat Set dari ID tugas yang sudah selesai agar pengecekan lebih cepat
-        const completedTaskIds = new Set((logsData || []).map(log => log.task_id));
+        // Buat map log berdasarkan task_id hari ini
+        const logsMap = {};
+        (logsData || []).forEach(log => {
+            logsMap[log.task_id] = log;
+        });
 
-        // 4. Gabungkan data
         currentTasks = (tasksData || []).map(task => ({
             ...task,
-            is_completed_today: completedTaskIds.has(task.id)
+            log_id: logsMap[task.id] ? logsMap[task.id].id : null,
+            is_completed_today: logsMap[task.id] ? logsMap[task.id].is_completed : false,
+            evaluation: logsMap[task.id] ? logsMap[task.id].evaluation : null
         }));
 
         if (!isSilentRefresh) {
@@ -1426,8 +1428,6 @@ async function loadTasks(employeeId, isSilentRefresh = false) {
             document.getElementById('tasks-container').innerHTML = '';
         } else {
             renderTasksMobile(currentTasks);
-            
-            // Aktifkan pemantau realtime setelah data pertama kali dimuat
             if (!isSilentRefresh) setupTaskRealtime(employeeId);
         }
         
@@ -1437,7 +1437,7 @@ async function loadTasks(employeeId, isSilentRefresh = false) {
     }
 }
 
-// FUNGSI 3: Render Tugas dengan Indikator Selesai
+// Perbarui fungsi renderTasksMobile di index.html
 function renderTasksMobile(tasks) {
     const container = document.getElementById('tasks-container');
     let html = '';
@@ -1456,18 +1456,15 @@ function renderTasksMobile(tasks) {
         }
         else if (task.schedule_type === 'bulanan' || task.task_type === 'sekali') scheduleText = `Tgl ${task.schedule_date || '-'}`;
 
-        // Cek Status Harian
         let isCompleted = task.is_completed_today;
         let cardClass = task.is_active ? 'bg-white shadow-sm border-slate-200' : 'bg-slate-50 border-slate-200 opacity-60';
         let titleClass = task.is_active ? 'text-slate-800' : 'text-slate-500 line-through';
         
-        // Beri warna hijau jika tugas sudah selesai hari ini
         if (isCompleted) {
             cardClass = 'bg-emerald-50/40 shadow-sm border-emerald-200 border-l-4 border-l-emerald-500 transition-all';
             titleClass = 'text-emerald-900 line-through opacity-70';
         }
 
-        // Logic Label Pojok Kanan Atas
         let statusBadge = '';
         if (isCompleted) {
             statusBadge = `<div class="absolute top-0 right-0 bg-emerald-500 text-white text-[9px] font-bold px-2 py-1 rounded-bl-lg flex items-center gap-1 shadow-sm"><i class="fa-solid fa-check-double"></i> SELESAI HARI INI</div>`;
@@ -1475,17 +1472,43 @@ function renderTasksMobile(tasks) {
             statusBadge = `<div class="absolute top-0 right-0 bg-slate-200 text-slate-500 text-[9px] font-bold px-2 py-0.5 rounded-bl-lg">NONAKTIF</div>`;
         }
 
+        // Bagian Input Penilaian Admin (Hanya muncul jika tugas sudah selesai dan memiliki log_id)
+        let evaluationSection = '';
+        if (isCompleted && task.log_id) {
+            const evalVal = task.evaluation || '';
+            evaluationSection = `
+                <div class="mt-3 pt-3 border-t border-emerald-100 bg-white/60 p-2.5 rounded-xl">
+                    <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Penilaian Tugas:</label>
+                    <div class="flex gap-2 items-center">
+                        <select onchange="updateTaskEvaluation(${task.log_id}, this.value)" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                            <option value="" ${evalVal === '' ? 'selected' : ''}>-- Belum Dinilai --</option>
+                            <option value="perlu diperbaiki" ${evalVal === 'perlu diperbaiki' ? 'selected' : ''}>Perlu Diperbaiki</option>
+                            <option value="baik" ${evalVal === 'baik' ? 'selected' : ''}>Baik</option>
+                            <option value="sangat baik" ${evalVal === 'sangat baik' ? 'selected' : ''}>Sangat Baik</option>
+                        </select>
+                    </div>
+                </div>
+            `;
+        } else {
+            evaluationSection = `
+                <div class="mt-2 text-[10px] text-slate-400 italic">
+                    * Penilaian aktif setelah karyawan menyelesaikan tugas ini.
+                </div>
+            `;
+        }
+
         html += `
-            <div class="p-4 rounded-2xl border ${cardClass} relative overflow-hidden transition-all duration-500">
+            <div class="p-4 rounded-2xl border ${cardClass} relative overflow-hidden transition-all duration-500 mb-3">
                 ${statusBadge}
                 <div class="pr-20 mb-3"><h4 class="font-bold text-sm ${titleClass} leading-snug">${task.task_name}</h4></div>
-                <div class="flex flex-wrap gap-1.5 mb-3">
+                <div class="flex flex-wrap gap-1.5 mb-2">
                     <span class="text-[10px] font-bold px-2 py-1 rounded-md border ${isCompleted ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : typeBg} flex items-center gap-1"><i class="fa-solid ${typeIcon}"></i> ${typeText}</span>
                     <span class="text-[10px] font-bold px-2 py-1 rounded-md border ${isCompleted ? 'bg-white text-emerald-600 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'} flex items-center gap-1"><i class="fa-solid fa-calendar-day"></i> ${scheduleText}</span>
                 </div>
                 
-                <!-- Tombol Opsi Admin (Disembunyikan sedikit jika tugas selesai agar tidak mengganggu fokus) -->
-                <div class="grid grid-cols-2 gap-2 border-t ${isCompleted ? 'border-emerald-100/50' : 'border-slate-100'} pt-3 ${isCompleted ? 'opacity-50 hover:opacity-100' : ''}">
+                ${evaluationSection}
+
+                <div class="grid grid-cols-2 gap-2 border-t border-slate-100 pt-3 mt-3">
                     <button onclick="editTask(${task.id})" class="py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-1.5">
                         <i data-lucide="edit-2" class="w-3.5 h-3.5"></i> Edit
                     </button>
@@ -1499,6 +1522,20 @@ function renderTasksMobile(tasks) {
     
     container.innerHTML = html;
     if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+async function updateTaskEvaluation(logId, evaluationValue) {
+    try {
+        const { error } = await supabaseClient
+            .from('daily_task_logs')
+            .update({ evaluation: evaluationValue || null })
+            .eq('id', logId);
+
+        if (error) throw error;
+        showToast("Sukses", "Penilaian tugas berhasil disimpan.", "success");
+    } catch (err) {
+        showToast("Gagal", err.message, "error");
+    }
 }
 
         function openTaskModal() {
