@@ -622,10 +622,11 @@
         let currentTasks = [];
         let selectedEmployeeIdTugas = null;
 
-        // Penilaian Kinerja State
-        let currentEvalLogs = [];
-        let currentEvalStatusFilter = 'all';
-        let evalRealtimeSubscription = null;
+      // Penilaian Kinerja State
+let currentEvalLogs = [];
+let currentEvalStatusFilter = 'all';
+let evalRealtimeSubscription = null;
+let evalTaskTypeMap = {};
 
         const TAB_KEYS = ['penilaian', 'tugas', 'gaji'];
         const HARI_OPTIONS = [
@@ -1015,41 +1016,49 @@
         }
 
         async function loadEvaluationLogs(isSilentRefresh = false) {
-            const empId = document.getElementById('eval-employee-select')?.value || 'all';
-            const startDate = document.getElementById('eval-date-start')?.value;
-            const endDate = document.getElementById('eval-date-end')?.value;
+    const empId = document.getElementById('eval-employee-select')?.value || 'all';
+    const startDate = document.getElementById('eval-date-start')?.value;
+    const endDate = document.getElementById('eval-date-end')?.value;
 
-            if (!isSilentRefresh) {
-                document.getElementById('loading-eval').classList.remove('hidden');
-                document.getElementById('empty-eval').classList.add('hidden');
-                document.getElementById('eval-logs-container').innerHTML = '';
-            }
+    if (!isSilentRefresh) {
+        document.getElementById('loading-eval').classList.remove('hidden');
+        document.getElementById('empty-eval').classList.add('hidden');
+        document.getElementById('eval-logs-container').innerHTML = '';
+    }
 
-            try {
-                let query = supabaseClient
-                    .from('daily_task_logs')
-                    .select('*')
-                    .order('task_date', { ascending: false })
-                    .order('is_completed', { ascending: false })
-                    .order('id', { ascending: false });
+    try {
+        let query = supabaseClient
+            .from('daily_task_logs')
+            .select('*')
+            .order('task_date', { ascending: false })
+            .order('is_completed', { ascending: false })
+            .order('id', { ascending: false });
 
-                if (empId !== 'all') query = query.eq('pic_id', empId);
-                if (startDate) query = query.gte('task_date', startDate);
-                if (endDate) query = query.lte('task_date', endDate);
+        if (empId !== 'all') query = query.eq('pic_id', empId);
+        if (startDate) query = query.gte('task_date', startDate);
+        if (endDate) query = query.lte('task_date', endDate);
 
-                const { data, error } = await query;
-                if (error) throw error;
+        const [{ data, error }, { data: masterTasksData, error: masterErr }] = await Promise.all([
+            query,
+            supabaseClient.from('employee_tasks').select('id, schedule_type, task_type')
+        ]);
 
-                currentEvalLogs = data || [];
-                if (!isSilentRefresh) document.getElementById('loading-eval').classList.add('hidden');
+        if (error) throw error;
+        if (masterErr) throw masterErr;
 
-                updateEvalSummary(currentEvalLogs);
-                renderEvaluationLogs();
-            } catch (err) {
-                if (!isSilentRefresh) document.getElementById('loading-eval').classList.add('hidden');
-                showToast('Gagal memuat log penilaian', err.message, 'error');
-            }
-        }
+        evalTaskTypeMap = {};
+        (masterTasksData || []).forEach(m => { evalTaskTypeMap[m.id] = m; });
+
+        currentEvalLogs = data || [];
+        if (!isSilentRefresh) document.getElementById('loading-eval').classList.add('hidden');
+
+        updateEvalSummary(currentEvalLogs);
+        renderEvaluationLogs();
+    } catch (err) {
+        if (!isSilentRefresh) document.getElementById('loading-eval').classList.add('hidden');
+        showToast('Gagal memuat log penilaian', err.message, 'error');
+    }
+}
 
         function updateEvalSummary(logs) {
             const todayStr = getTodayLocalStr();
@@ -1289,16 +1298,7 @@ const isOverdue = !isCompleted && !isHarianTask && log.task_date && log.task_dat
             });
         }
 
-        // 1. Tambahkan variabel map jadwal di bagian state Penilaian Kinerja
-let evalTaskTypeMap = {};
 
-// 2. Di dalam loadEvaluationLogs(), tarik schedule_type dari employee_tasks sebelum renderEvaluationLogs()
-const { data: masterTasksData } = await supabaseClient
-    .from('employee_tasks')
-    .select('id, schedule_type, task_type');
-
-evalTaskTypeMap = {};
-(masterTasksData || []).forEach(m => { evalTaskTypeMap[m.id] = m; });
 
         async function loadTasks(employeeId) {
             document.getElementById('loading-tasks').classList.remove('hidden');
