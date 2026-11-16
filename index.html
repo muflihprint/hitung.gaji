@@ -1152,7 +1152,10 @@
                 const emp = evalEmployeeMap[log.pic_id];
                 const empName = emp ? emp.nama : `Karyawan #${log.pic_id}`;
                 const isCompleted = !!log.is_completed;
-                const isOverdue = !isCompleted && log.task_date && log.task_date < todayStr;
+                const masterInfo = evalTaskTypeMap[log.task_id];
+const isHarianTask = !masterInfo || (masterInfo.task_type !== 'sekali' && masterInfo.schedule_type === 'harian');
+const isExpiredHarian = !isCompleted && isHarianTask && log.task_date && log.task_date < todayStr;
+const isOverdue = !isCompleted && !isHarianTask && log.task_date && log.task_date < todayStr;
                 const currentEval = (log.evaluation || '').toLowerCase();
 
                 let cardBorder = 'bg-white border-slate-200';
@@ -1163,10 +1166,13 @@
                         ? 'bg-white border-emerald-200 border-l-4 border-l-emerald-500'
                         : 'bg-amber-50/30 border-amber-200 border-l-4 border-l-amber-400';
                     statusRibbon = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200"><i class="fa-solid fa-check-double"></i> Selesai${log.completed_at ? ' • ' + formatEvalTimestamp(log.completed_at) : ''}</span>`;
-                } else if (isOverdue) {
-                    cardBorder = 'bg-rose-50/30 border-rose-200 border-l-4 border-l-rose-500';
-                    statusRibbon = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200"><i class="fa-solid fa-circle-exclamation"></i> Tunggakan</span>`;
-                }
+                } else if (isExpiredHarian) {
+    cardBorder = 'bg-rose-50/40 border-rose-200 border-l-4 border-l-rose-600';
+    statusRibbon = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200"><i class="fa-solid fa-circle-xmark"></i> Tidak Dilaksanakan</span>`;
+} else if (isOverdue) {
+    cardBorder = 'bg-rose-50/30 border-rose-200 border-l-4 border-l-rose-500';
+    statusRibbon = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200"><i class="fa-solid fa-circle-exclamation"></i> Tunggakan</span>`;
+}
 
                 let evaluationControl = `
                     <div class="mt-2.5 pt-2 border-t border-slate-100/80 text-[11px] text-slate-400 italic flex items-center gap-1.5">
@@ -1282,6 +1288,17 @@
                 if (hasSelection) loadTasks(selectedEmployeeIdTugas);
             });
         }
+
+        // 1. Tambahkan variabel map jadwal di bagian state Penilaian Kinerja
+let evalTaskTypeMap = {};
+
+// 2. Di dalam loadEvaluationLogs(), tarik schedule_type dari employee_tasks sebelum renderEvaluationLogs()
+const { data: masterTasksData } = await supabaseClient
+    .from('employee_tasks')
+    .select('id, schedule_type, task_type');
+
+evalTaskTypeMap = {};
+(masterTasksData || []).forEach(m => { evalTaskTypeMap[m.id] = m; });
 
         async function loadTasks(employeeId) {
             document.getElementById('loading-tasks').classList.remove('hidden');
